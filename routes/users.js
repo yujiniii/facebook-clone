@@ -3,6 +3,7 @@ const User = require("../models/User");
 const multer = require("multer");
 const cloudinary = require("cloudinary");
 const { Passport } = require('passport/lib');
+const passport = require('passport');
 const router = express.Router();
 
 //multer setup
@@ -49,8 +50,8 @@ router.post("/user/register", uppload.single("image"), (req,res)=>{
     ){
         let newUser = new User({
             username : req.body.username,
-            firstname : req.body.firstname,
-            lastname:req.body.lastname
+            firstName : req.body.firstname,
+            lastName:req.body.lastname
         });
         if(req.file){
             cloudinary.uploader.upload(req.file.path, result =>{
@@ -81,3 +82,98 @@ function createUser(newUser, password, req, res) {
         }
     })
 }
+
+//login
+router.get("/user/login", (req,res)=>{
+    res.render("users/login");
+});
+
+router.post(
+    "user/login",
+    passport.authenticate("local",{
+        successRedirect:"/",
+        failureRedirect:"/user/login"
+    }),
+    (req,res) => {  }
+);
+
+//All user
+router.get("/user/all", isLoggedIn, (req,res)=>{
+    User.find({}, (err,users)=>{
+        if(err){
+            console.log(err);
+            req.flash(
+                "error",
+                "There has been a problem getting all users info"
+            );
+            res.redirect("/");
+        } else {
+            res.render("users/users", {users:users});
+        }
+    });
+});
+
+//logout
+router.get("/user/logout", (req,res)=>{
+    req.logout();
+    res.redirect("back");
+});
+
+//user Profile
+router.get("/user/:id/profile", isLoggedIn, (req,res)=>{
+    User.findById(req.params.id)
+        .populate("friends")
+        .populate("friendRequests")
+        .populate("posts")
+        .exec((err, user)=>{
+            if(err){
+                console.log(err)
+                req.flash("error","There has been an error");
+                res.redirect("back");
+            } else {
+                console.log(user);
+                res.render("users/user", {userData:user});
+            }
+        });
+});
+
+// add friend
+router.get("user/:id/add", isLoggedIn,(req,res)=>{
+    User.findById(req.user._id,(err,user)=>{
+        if(err){
+            console.log(err);
+            req.flash(
+                "error",
+                "there has been an error adding this person to yout friends list"
+            );
+            res.redirect("back")
+        }else{
+            User.findById(req.params.id, (err, foundUser)=>{
+                if(err){
+                    console.log(err);
+                    req.flash("error", "person not found");
+                    res.redirect("back");
+                } else {
+                    if(
+                        foundUser.friendRequests.find(o=> o._id.equals(user._id))
+                    ){
+                        req.flash("error","you have already sent a friend request to &{user.firstName}");
+                        return res.redirect("back");
+                    } else if(foundUser.friends.find(o=> o._id.equals(user._id))){
+                        req.flash("error","&{foundUser.firstName} is already in your friends list");
+                        return res.redirect("back");
+                    }
+                    let currUser = {
+                        _id:user._id,
+                        firstName : user.firstName,
+                        lastName:user.lastName
+                    };
+                    foundUser.friendRequests.push(currUser);
+                    foundUser.save();
+                    req.flash("success","success! you sent ${foundUser.firstName} a friend request!");
+                    res.redirect("back");
+                }
+            });
+        }
+    });
+});
