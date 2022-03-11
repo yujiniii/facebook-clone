@@ -177,3 +177,89 @@ router.get("user/:id/add", isLoggedIn,(req,res)=>{
         }
     });
 });
+
+//Accept frien request
+router.get("user/:id/accept", isLoggedIn,(req,res)=>{
+    User.findById(req.user._id, (err,user)=>{
+        if(err){
+            console.log(err);
+            req.flash("error","There has been an error finding your profile, are you connected?");
+            res.redirect("back");
+        } else {
+            User.findById(req.params.id,(err,foundUser)=>{
+                let r = user.friendRequests.find(o => o._id.equals(req.params.id));
+                if(r){
+                    let index = user.friendRequests.indexOf(r);
+                    user.friendRequests.splice(index, 1);
+                    let friend = {
+                        id:foundUser._id,
+                        firstName:foundUser.firstName,
+                        lastName:foundUser.lastName
+                    };
+                    user.friends.push(friend);
+                    user.save();
+
+                    let currUser = {
+                        _id:user._id,
+                        firstName :user.firstName,
+                        lastName:user.lastName
+                    };
+                    foundUser.friends.push(currUser);
+                    foundUser.save();
+                    req.flash("usccess",`you ans ${foundUser.firstName} are now friends!!`);
+                    res.redirect("back");
+                } else {
+                    req.flash("error","There has been an error,  is the profile you are trying to add on your requests?");
+                    res.redirect("back");
+                }
+            });
+        }
+    });
+});
+
+// Decline frien Request
+router.get("/user/:id/decline", isLoggedIn, (req,res)=>{
+    User.findById(req.user._id, (err,user)=>{
+        if(err){
+            console.log(err);
+            req.flash("error","There has been error decline the request");
+            res.redirect("back");
+        } else {
+            User.findById(req.params.id, (err, foundUser)=>{
+                if(err){
+                    console.log(err);
+                    req.flash("error", "There has been declining the request");
+                    res.redirect("back");
+                } else {
+                    //remove request
+                    let r = user.friendRequests.find(o=>o._id.equals(foundUser._id));
+                    if(r){
+                        let index = user.friendRequests.indexOf(r);
+                        user.friendRequests.splice(index,1);
+                        user.save();
+                        req.flash("success", "You declined");
+                        res.redirect("back");
+                    }
+                }
+            });
+        }
+    });
+});
+
+
+/* chat router */
+router.get('/chat', isLoggedIn,(req,res)=>{
+    User.findById(req.user._id)
+        .populate("friends")
+        .exec((err,user)=>{
+            if(err) {
+                console.log(err);
+                req.flash("error","There has been an error trying to access the chat");
+                res.redirect('/');
+            } else {
+                res.render("/users/chat",{ userData : user});
+            }
+        });
+});
+
+module.exports = router;
