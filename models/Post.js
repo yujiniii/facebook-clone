@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-let PostSchema = new mongoose.Schema({
+let PostSchema = new mongoose.Schema({  //게시물 스키마
     content : String,
     time:Date,
     likes:Number,
