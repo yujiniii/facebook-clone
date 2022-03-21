@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-let CommentSchema = new mongoose.Schema({
+let CommentSchema = new mongoose.Schema({ //댓글용 스키마
     content : String,
     likes : Number,
     creator:{
