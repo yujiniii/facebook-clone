@@ -5,6 +5,8 @@ const cloudinary = require("cloudinary");
 const { Passport } = require('passport/lib');
 const passport = require('passport');
 const router = express.Router();
+const csrf = require('csurf');
+const csrfProtection = csrf({ cookie: true }); //쿠키허용
 
 //multer setup
 const storage = multer.diskStorage({
@@ -20,7 +22,7 @@ const imageFilter = (req, file, callback) =>{
     callback(null,true);
 };
 
-const upload = multer({storage:storage, fileFilter:fileFilter});
+const upload = multer({storage:storage, fileFilter:imageFilter});
 
 //cloudinary setup
 cloudinary.config({
@@ -41,7 +43,7 @@ const isLoggedIn = (req,res,next)=>{
 //routers
 
 //userRouters
-router.post("/user/register", uppload.single("image"), (req,res)=>{
+router.post("/user/register", upload.single("image"), (req,res)=>{
     if(
         req.body.username &&
         req.body.firstname &&
@@ -84,12 +86,13 @@ function createUser(newUser, password, req, res) {
 }
 
 //login
-router.get("/user/login", (req,res)=>{
-    res.render("users/login");
+router.get("/user/login",csrfProtection, (req,res)=>{
+    res.render("users/login", { csrfToken: req.csrfToken() });
 });
 
 router.post(
     "user/login",
+    csrfProtection,
     passport.authenticate("local",{
         successRedirect:"/",
         failureRedirect:"/user/login"
