@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const passportLocalMongoose = require("passport-local-mongoose");
 
-let UserSchema = new mongoose.Schema({
+let UserSchema = new mongoose.Schema({  //사용자 스키마
     username : String,
     firstName : String,
     lastName : String,
