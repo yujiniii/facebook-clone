@@ -2,7 +2,8 @@ const express = require("express");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const Comment = require("../models/Comment");
-const multer = require("cloudinary");
+const multer = require("multer");
+const cloudinary = require("cloudinary");
 const router = express.Router();
 
 //Multer Setup
@@ -38,7 +39,7 @@ const isLoggedIn = (req,res,next)=>{
 };
 
 //Router
-router("/",isLoggedIn,(req,res)=>{
+router.get("/",isLoggedIn,(req,res)=>{
     User.findById(req.user._id)    // 친구들의 게시글
         .populate({
             path:"friends",
@@ -63,6 +64,150 @@ router("/",isLoggedIn,(req,res)=>{
                 for(var i=0;i<user.posts.length;i++){
                     posts.push(user.posts[i]);
                 }
+                if(posts){
+                    res.render("posts/index",{
+                        posts:posts
+                    });
+                }else{
+                    res.render("posts/index",{posts:null});
+                }
             }
-        })
-})
+        });
+});
+router.get("/post/:id/like", isLoggedIn,(req,res)=>{
+    User.findById(req.user._id,(userErr,user)=>{
+        if(userErr){
+            console.log(userErr);
+            req.flash("There has been an error trying to like this post, are you logged in??");
+            res.redirect("back");
+        } else {
+            Post.findById(req.params.id,(postErr,post)=>{
+                if(postErr){
+                    console.log(postErr);
+                    req.flash("There has been an error trying to loke thos post, are you sure you are in the correct URL??");
+                    res.redirect("back");
+                }else {
+                    for(let i=0;i<user.liked_posts.length;i++){
+                        //이미 좋아요 했는지 체크
+                        if(user.liked_posts[i].equals(post._id)){
+                            req.flash("error", "you already liked this post");
+                            return res.redirect("back");
+                        }
+                    }
+                    post.likes = post.likes+1; // 좋아요
+                    post.save();
+                    user.liked_posts.push(post._id);
+                    user.save();
+                    req.flash("success",`You successfully liked ${post.creator.firstName} 's post.`)
+                    res.redirect("back");
+                }
+            });
+        }
+    });
+});
+
+router.get("/post/:postid/comments/:commentid/like", isLoggedIn, (req,res)=>{
+    User.findById(req.user._id,(userErr, user)=>{
+        if(userErr){
+            console.log(userErr);
+            req.flash("error","There has been an error trying to like this post");
+            res.redirect("back");
+        } else {
+            Comment.findById(req.params.commentid, (commnetErr, comment)=>{
+                if(commentErr){
+                    console.log(commentErr);
+                    req.flash("error","There has been an error trying to find the comment, are you sure thr URL is correct??");
+                    res.redirect("back");
+                } else {
+                    comment.likes = comment.likes+1;
+                    comment.save();
+                    user.liked_commnets.push(comment._id);
+                    user.save();
+                    req.flash("success", `you succeddfully liked ${comment,creator.firstName}'s comment`);
+                    res.redirect("back");
+                }
+            });
+        }
+    });
+});
+
+router.get("/post/new", isLoggedIn, (req,res)=>{
+    res.render("posts/new");
+});
+
+router.post("post/new", isLoggedIn, upload.single("image"),(req,res)=>{
+    if(req.body.content){
+        let newPost = {};
+        if(req.file){
+            cloudinary.uploader.upload(req.file.path, result =>{
+                newPost.image = result.secure_url;
+                newPost.creator = req.user;
+                newPost.time = new Date();
+                newPost.likes = 0;
+                newPost.content = sanitize(req.body.content);
+                return createPost(newPost, req,res);
+            });
+        } else {
+                newPost.image = null;
+                newPost.creator = req.user;
+                newPost.time = new Date();
+                newPost.likes = 0;
+                newPost.content = sanitize(req.body.content);
+                return createPost(newPost, req,res);
+        }
+    }
+});
+
+function createPost(newPost, req,res){
+    Post.create(newPost, (err, post)=>{
+        if(err){
+            console.log(err);
+        } else {
+            req.user.posts.push(post._id);
+            req.user.save();
+            res.redirect("/");
+        }
+    });
+}
+
+router.get("/post/:id", isLoggedIn, (req, res) =>{
+    Post.findById(req.params.id)
+        .populate("comment")
+        .exec((err,post)=>{
+            if(err){
+                console.log(err);
+                req.flash("error","There has been an rttot finding ths post");
+                res.redirect("back");
+            } else {
+                res.render("posts/show", {post:post});
+            }
+        });
+});
+
+router.post("/post/:id/comments/new", isLoggedIn, (req,res)=>{
+    Post.findById(req.params.id, (err, post)=>{
+        if(err){
+            console.log(err);
+            req.flash("error","There has been an error posting your comment");
+            res.redirect("back");
+        }else {
+            Comment({content:req.body.content}, (err, comment)=>{
+                if(err){
+                    console.log(err);
+                    req.flash("error","Something went wrong with posting your comment");
+                    res.redirect("back");
+                } else {
+                    comment.creator._id = req.user._id;
+                    comment.creator.firstName = req.user.firstName;
+                    comment.creator.lastName = req.user.lastName;
+                    comment.likes = 0;
+                    comment.save();
+                    req.flash("success", "successfully posted your comment");
+                    res.redirect("/post/"+post._id)
+                }
+            });
+        }
+    });
+});
+
+module.exports = router;
