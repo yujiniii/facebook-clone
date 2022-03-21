@@ -1,14 +1,16 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const session = require('session');
+const session = require("express-session");
 const cookieParser = require('cookie-parser');
 const passport = require('passport');
 const Localstrategy = require('passport-local');
 const socket = require('socket.io');
+const path = require('path'); 
 const dotenv = require('dotenv');
 const flash = require('connect-flash');
 const Post = require('./models/Post');
 const User = require('./models/User');
+
 
 const port = process.env.PORT || 3000;
 const onlineChatUsers = {};
@@ -21,16 +23,21 @@ const { emit, on } = require('nodemon');
 
 const app = express();
 
-app.set("veiw engine", "ejs");
+app.set('view engine', 'ejs'); 
+app.set('views', path.join(__dirname, 'views')); 
 
 // 미들웨어
-app.use(cookieParser(process.env.SECRET));
-app.use(session({
+const sessop = {
     secret:process.env.SECRET,
     resave:false,
-    saveUninitialized:false
-})
-);
+    saveUninitialized:false,
+    cookie: {
+        httpOnly: true,
+        secure: false,
+    },
+};
+app.use(cookieParser(process.env.SECRET));
+app.use(session(sessop));
 app.use(flash());
 
 // passport setup
@@ -47,7 +54,7 @@ app.use(express.static("public"));
 
 //mongoDB Connection
 mongoose
-    .connect("mongodv://127.0.0.1:27017/facebook_clone",{
+    .connect("mongodb://127.0.0.1:27017/facebook_clone",{
         //true로 넣어줘야 error가 안남
         useNewUrlParser:true,
         useCreateIndex:true,
