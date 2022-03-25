@@ -24,8 +24,9 @@ const { emit, on } = require('nodemon');
 const app = express();
 
 app.set('view engine', 'ejs'); 
-app.set('views', path.join(__dirname, 'views')); 
-
+app.set('views', path.join(__dirname, "/views")); 
+app.use(express.static('public'));
+console.log(__dirname);
 // 미들웨어
 const sessop = {
     secret:process.env.SECRET,
@@ -50,7 +51,7 @@ passport.deserializeUser(User.deserializeUser());
 //middle ware
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
-app.use(express.static("public"));
+
 
 //mongoDB Connection
 mongoose

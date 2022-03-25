@@ -87,12 +87,12 @@ function createUser(newUser, password, req, res) {
 
 //login
 router.get("/user/login",csrfProtection, (req,res)=>{
-    res.render("users/login", { csrfToken: req.csrfToken() });
+    res.render("users/login");  //, { csrfToken: req.csrfToken() }
 });
 
 router.post(
-    "user/login",
-    csrfProtection,
+    "/user/login",
+    //csrfProtection,
     passport.authenticate("local",{
         successRedirect:"/",
         failureRedirect:"/user/login"
